@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,13 +8,15 @@ import {
   Dimensions,
   StatusBar,
   Alert,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
-import { colors } from '../styles/theme';
+  Platform, // Import Platform
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
+import { COMPUTER_IP } from "../config/apiConfig";
+import { colors } from "../styles/theme";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 const AudioPlayerScreen = ({ navigation, route }) => {
   const [sound, setSound] = useState(null);
@@ -26,30 +28,43 @@ const AudioPlayerScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     loadAudio();
-  }, []);
+  }, [audioFile]);
 
   useEffect(() => {
     return sound
       ? () => {
-          console.log('Unloading Sound');
+          console.log("Unloading Sound");
           sound.unloadAsync();
         }
       : undefined;
   }, [sound]);
 
-
   const loadAudio = async () => {
     try {
       if (audioFile?.uri) {
+        let uri = audioFile.uri;
+
+        // Fix URLs for physical devices - replace localhost or emulator IPs with computer's actual IP
+        if (Platform.OS !== "web") {
+          if (uri.includes("localhost")) {
+            uri = uri.replace("localhost", COMPUTER_IP);
+          } else if (uri.includes("10.0.2.2")) {
+            uri = uri.replace("10.0.2.2", COMPUTER_IP);
+          }
+        }
+
+        console.log("Loading audio from:", uri);
+
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: audioFile.uri },
-          { shouldPlay: false },
+          { uri },
+          { shouldPlay: true }, // Auto play
           onPlaybackStatusUpdate
         );
         setSound(newSound);
       }
     } catch (error) {
-      console.error('Error loading audio:', error);
+      console.error("Error loading audio:", error);
+      Alert.alert("Playback Error", "Could not play audio file.");
     }
   };
 
@@ -58,7 +73,7 @@ const AudioPlayerScreen = ({ navigation, route }) => {
       setPosition(status.positionMillis || 0);
       setDuration(status.durationMillis || 0);
       setIsPlaying(status.isPlaying);
-      
+
       if (status.didJustFinish) {
         setIsPlaying(false);
         setPosition(0);
@@ -68,7 +83,7 @@ const AudioPlayerScreen = ({ navigation, route }) => {
 
   const togglePlayPause = async () => {
     if (!sound) return;
-    
+
     try {
       if (isPlaying) {
         await sound.pauseAsync();
@@ -76,7 +91,7 @@ const AudioPlayerScreen = ({ navigation, route }) => {
         await sound.playAsync();
       }
     } catch (error) {
-      console.error('Error toggling playback:', error);
+      console.error("Error toggling playback:", error);
     }
   };
 
@@ -84,32 +99,40 @@ const AudioPlayerScreen = ({ navigation, route }) => {
     const totalSeconds = Math.floor(millis / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   const progress = duration > 0 ? position / duration : 0;
 
   const handleShare = () => {
-    Alert.alert('Share', 'Share functionality coming soon!');
+    Alert.alert("Share", "Share functionality coming soon!");
   };
 
   const handleDownload = () => {
-    Alert.alert('Downloaded', 'Audio saved to your device!');
+    Alert.alert("Downloaded", "Audio saved to your device!");
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+
       <LinearGradient
-        colors={[colors.gradientStart, colors.gradientMiddle, colors.gradientEnd]}
+        colors={[
+          colors.gradientStart,
+          colors.gradientMiddle,
+          colors.gradientEnd,
+        ]}
         style={styles.gradient}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
       >
         {/* Noise overlay */}
         <Image
-          source={require('../../assets/noise.png')}
+          source={require("../../assets/noise.png")}
           style={styles.noiseOverlay}
           resizeMode="repeat"
         />
@@ -122,7 +145,9 @@ const AudioPlayerScreen = ({ navigation, route }) => {
           >
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>New Voice Uploaded</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {audioFile?.title || "Audio Player"}
+          </Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -131,34 +156,21 @@ const AudioPlayerScreen = ({ navigation, route }) => {
           {/* Audio Preview Card */}
           <View style={styles.audioCard}>
             {/* Waveform Visualization */}
-            <View style={styles.waveformContainer}>
-              <LinearGradient
-                colors={['#00D4FF', '#6366F1', '#A855F7']}
-                style={styles.waveformGradient}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-              >
-                <View style={styles.waveformInner}>
-                  {[...Array(40)].map((_, i) => (
-                    <View 
-                      key={i} 
-                      style={[
-                        styles.waveBar, 
-                        { 
-                          height: Math.sin(i * 0.25) * 30 + 40,
-                          opacity: i / 40 <= progress ? 1 : 0.4,
-                        }
-                      ]} 
-                    />
-                  ))}
-                </View>
-              </LinearGradient>
-            </View>
+            <Image
+              source={require("../../assets/recordingBackground.png")}
+              style={styles.waveformImage}
+              resizeMode="cover"
+            />
 
             {/* Progress Bar */}
             <View style={styles.progressBarContainer}>
               <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { width: `${progress * 100}%` },
+                  ]}
+                />
               </View>
             </View>
 
@@ -170,16 +182,16 @@ const AudioPlayerScreen = ({ navigation, route }) => {
           </View>
 
           {/* Play Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.playButton}
             onPress={togglePlayPause}
             activeOpacity={0.8}
           >
             <View style={styles.playButtonInner}>
-              <Ionicons 
-                name={isPlaying ? "pause" : "play"} 
-                size={32} 
-                color={colors.primary} 
+              <Ionicons
+                name={isPlaying ? "pause" : "play"}
+                size={32}
+                color={colors.primary}
                 style={!isPlaying && styles.playIcon}
               />
             </View>
@@ -188,15 +200,12 @@ const AudioPlayerScreen = ({ navigation, route }) => {
 
         {/* Bottom Action Buttons */}
         <View style={styles.bottomActions}>
-          <TouchableOpacity 
-            style={styles.shareButton}
-            onPress={handleShare}
-          >
+          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
             <Ionicons name="share-outline" size={20} color="#FFFFFF" />
             <Text style={styles.shareButtonText}>Share</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.downloadButton}
             onPress={handleDownload}
           >
@@ -217,7 +226,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   noiseOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -227,9 +236,9 @@ const styles = StyleSheet.create({
     opacity: 0.03,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 20,
@@ -238,14 +247,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   headerSpacer: {
     width: 40,
@@ -253,12 +262,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   audioCard: {
-    width: '100%',
-    backgroundColor: 'rgba(30, 30, 50, 0.8)',
+    width: "100%",
+    backgroundColor: "rgba(30, 30, 50, 0.8)",
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
@@ -268,23 +277,29 @@ const styles = StyleSheet.create({
   waveformContainer: {
     height: 100,
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  waveformImage: {
+    width: "100%",
+    height: 120,
+    borderRadius: 12,
     marginBottom: 16,
   },
   waveformGradient: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   waveformInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 2,
   },
   waveBar: {
     width: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     borderRadius: 2,
   },
   progressBarContainer: {
@@ -292,68 +307,68 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressBarFill: {
-    height: '100%',
+    height: "100%",
     backgroundColor: colors.primary,
     borderRadius: 2,
   },
   timeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   timeText: {
     fontSize: 12,
-    color: '#A0A0A0',
+    color: "#A0A0A0",
   },
   playButton: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(3, 124, 198, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(3, 124, 198, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   playButtonInner: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(200, 230, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(200, 230, 255, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   playIcon: {
     marginLeft: 4, // Offset for visual balance
   },
   bottomActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 24,
     paddingBottom: 40,
     gap: 16,
   },
   shareButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
   },
   shareButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   downloadButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
@@ -361,8 +376,8 @@ const styles = StyleSheet.create({
   },
   downloadButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });
 

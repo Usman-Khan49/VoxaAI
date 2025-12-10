@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../styles/theme';
 import AuthInput from '../components/AuthInput';
+import { authService } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,9 +23,41 @@ const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSignIn = () => {
-    // TODO: Implement sign in logic
-    console.log('Sign in with:', email, password);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await authService.login(email, password);
+      const user = response.user;
+
+      if (!user.role || !user.contentType) {
+        // Profile incomplete, go to RoleSelection
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'RoleSelection' }],
+        });
+      } else {
+        // Profile complete, go to Home
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
+      }
+    } catch (err) {
+      setError(err.error || 'Login failed');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,7 +96,7 @@ const SignInScreen = ({ navigation }) => {
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.title}>Welcome back!</Text>
-              <Text style={styles.subtitle}>Discover the latest 1000+ Voice Effects</Text>
+              <Text style={styles.subtitle}> Great to see you again, You've been missed!</Text>
             </View>
 
             {/* Form Section */}
@@ -95,8 +128,11 @@ const SignInScreen = ({ navigation }) => {
                 style={styles.signInButton}
                 onPress={handleSignIn}
                 activeOpacity={0.8}
+                disabled={loading}
               >
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={styles.signInButtonText}>
+                  {loading ? 'Signing In...' : 'Sign In'}
+                </Text>
               </TouchableOpacity>
               <View style={styles.signUpContainer}>
               <Text style={styles.signUpText}>Don't have an account? </Text>
@@ -104,6 +140,13 @@ const SignInScreen = ({ navigation }) => {
                 <Text style={styles.signUpLink}>Sign Up</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Error Message */}
+            {error && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
             </View>
 
             {/* Sign Up Link */}
@@ -200,7 +243,19 @@ const styles = StyleSheet.create({
   signUpLink: {
     fontSize: 14,
     color: colors.primary,
+    color: colors.primary,
     fontWeight: '600',
+  },
+  errorContainer: {
+    padding: 12,
+    marginTop: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 82, 82, 0.1)',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#FF5252',
+    fontSize: 14,
   },
 });
 

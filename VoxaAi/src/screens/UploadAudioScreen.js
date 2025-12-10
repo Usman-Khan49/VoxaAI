@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
+
 import {
   View,
   Text,
@@ -8,13 +9,16 @@ import {
   Dimensions,
   StatusBar,
   Alert,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
-import { colors } from '../styles/theme';
+  Platform,
+} from "react-native";
 
-const { width, height } = Dimensions.get('window');
+import * as DocumentPicker from "expo-document-picker";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { colors } from "../styles/theme";
+import { authService } from "../services/api";
+
+const { width, height } = Dimensions.get("window");
 
 const UploadAudioScreen = ({ navigation }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -22,29 +26,72 @@ const UploadAudioScreen = ({ navigation }) => {
   const handleUpload = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['audio/mpeg', 'audio/wav', 'audio/x-m4a', 'audio/mp4', 'audio/*'],
+        type: [
+          "audio/mpeg",
+          "audio/wav",
+          "audio/x-m4a",
+          "audio/mp4",
+          "audio/*",
+        ],
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
-        
+
         // Check file size (80MB limit)
         const maxSize = 80 * 1024 * 1024; // 80MB in bytes
         if (file.size && file.size > maxSize) {
-          Alert.alert('File Too Large', 'Please select an audio file under 80MB.');
+          Alert.alert(
+            "File Too Large",
+            "Please select an audio file under 80MB."
+          );
           return;
         }
 
         setSelectedFile(file);
-        console.log('Selected file:', file);
-        
-        // Navigate to AudioPlayer screen with the selected file
-        navigation.navigate('AudioPlayer', { audioFile: file });
+
+        try {
+          // Upload to backend
+          const formData = new FormData();
+
+          if (Platform.OS === "web") {
+            // For Web: Append the file object directly or fetch blob
+            if (file.file) {
+              formData.append("audio", file.file);
+            } else {
+              // Fallback if file object is missing (should be there on web)
+              const response = await fetch(file.uri);
+              const blob = await response.blob();
+              formData.append("audio", blob, file.name || "audio.mp3");
+            }
+          } else {
+            // For Native: Append object with uri, name, type
+            formData.append("audio", {
+              uri: file.uri,
+              name: file.name,
+              type: file.mimeType || "audio/mpeg",
+            });
+          }
+
+          formData.append("title", file.name);
+          // Duration might not be available immediately, sending 0:00 or handling on backend would be better
+          formData.append("duration", "0:00");
+
+          await authService.saveRecording(formData);
+
+          // Navigate to AudioPlayer screen with the selected file
+          navigation.navigate("AudioPlayer", { audioFile: file });
+        } catch (error) {
+          console.error("Start upload error:", error);
+          Alert.alert("Upload Failed", "Could not save file to history.");
+          // Still navigate? Maybe not if upload failed. Let's let them decide.
+          navigation.navigate("AudioPlayer", { audioFile: file });
+        }
       }
     } catch (error) {
-      console.error('Error picking document:', error);
-      Alert.alert('Error', 'Failed to pick audio file. Please try again.');
+      console.error("Error picking document:", error);
+      Alert.alert("Error", "Failed to pick audio file. Please try again.");
     }
   };
 
@@ -54,17 +101,25 @@ const UploadAudioScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+
       <LinearGradient
-        colors={[colors.gradientStart, colors.gradientMiddle, colors.gradientEnd]}
+        colors={[
+          colors.gradientStart,
+          colors.gradientMiddle,
+          colors.gradientEnd,
+        ]}
         style={styles.gradient}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
       >
         {/* Noise overlay */}
         <Image
-          source={require('../../assets/noise.png')}
+          source={require("../../assets/noise.png")}
           style={styles.noiseOverlay}
           resizeMode="repeat"
         />
@@ -84,16 +139,13 @@ const UploadAudioScreen = ({ navigation }) => {
         {/* Content */}
         <View style={styles.content}>
           {/* Upload Card */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.uploadCard}
             onPress={handleUpload}
             activeOpacity={0.9}
           >
             {/* Close Button */}
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={handleClose}
-            >
+            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
               <Ionicons name="close" size={20} color="#A0A0A0" />
             </TouchableOpacity>
 
@@ -136,7 +188,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   noiseOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -146,9 +198,9 @@ const styles = StyleSheet.create({
     opacity: 0.03,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 20,
@@ -157,43 +209,43 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   headerSpacer: {
     width: 40,
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 24,
   },
   uploadCard: {
-    backgroundColor: 'rgba(30, 30, 50, 0.9)',
+    backgroundColor: "rgba(30, 30, 50, 0.9)",
     borderRadius: 20,
     padding: 32,
     paddingTop: 40,
-    alignItems: 'center',
+    alignItems: "center",
     width: width - 80,
-    position: 'relative',
+    position: "relative",
   },
   closeButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 16,
     right: 16,
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   uploadIconContainer: {
     marginBottom: 20,
@@ -202,34 +254,34 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 16,
-    backgroundColor: 'rgba(3, 124, 198, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    backgroundColor: "rgba(3, 124, 198, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
   },
   downloadArrow: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 16,
     right: 16,
     width: 22,
     height: 22,
     borderRadius: 6,
     backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   uploadTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginBottom: 20,
   },
   specsContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   specItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   specDot: {
@@ -241,7 +293,7 @@ const styles = StyleSheet.create({
   },
   specText: {
     fontSize: 14,
-    color: '#A0A0A0',
+    color: "#A0A0A0",
   },
 });
 

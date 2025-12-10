@@ -16,10 +16,10 @@ import { colors } from '../styles/theme';
 const { width, height } = Dimensions.get('window');
 
 const roles = [
-  { id: 'creator', label: 'Content Creator', icon: 'videocam-outline' },
-  { id: 'podcaster', label: 'Podcaster', icon: 'mic-outline' },
-  { id: 'gamer', label: 'Gamer', icon: 'game-controller-outline' },
-  { id: 'other', label: 'Other', icon: 'ellipsis-horizontal-outline' },
+  { id: 'creator', label: 'Content Creator', imageSource: require('../../assets/profile1.png') },
+  { id: 'podcaster', label: 'Podcaster', imageSource: require('../../assets/profile2.png') },
+  { id: 'gamer', label: 'Gamer', imageSource: require('../../assets/profile3.png') },
+  { id: 'other', label: 'Other', imageSource: require('../../assets/profile4.png') },
 ];
 
 const RoleSelectionScreen = ({ navigation }) => {
@@ -92,10 +92,12 @@ const RoleSelectionScreen = ({ navigation }) => {
                   styles.iconContainer,
                   selectedRole === role.id && styles.iconContainerSelected,
                 ]}>
-                  <Ionicons
-                    name={role.icon}
-                    size={32}
-                    color={selectedRole === role.id ? '#FFFFFF' : '#A0A0A0'}
+                  <Image
+                    source={role.imageSource} // Assuming 'imageSource' property in role object, e.g., require('../../assets/your_icon.png')
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                    }}
                   />
                 </View>
                 <Text style={[

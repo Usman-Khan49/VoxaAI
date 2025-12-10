@@ -15,19 +15,44 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../styles/theme';
 import AuthInput from '../components/AuthInput';
+import { authService } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 
 const SignUpScreen = ({ navigation }) => {
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSignUp = () => {
-    // TODO: Implement sign up logic with backend
-    console.log('Sign up with:', username, password);
-    // Navigate to profile completion after successful signup
-    navigation.navigate('RoleSelection');
+  const handleSignUp = async () => {
+    if (!email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Pass empty string or null for username as it's no longer used in the API call we modified
+      // OR better, update the API call signature in next step (we already did)
+      await authService.register(null, email, password);
+      // Navigate to profile completion or Sign In after successful signup
+      // For now, let's navigate to Sign In so they can log in
+      navigation.navigate('SignIn');
+    } catch (err) {
+      setError(err.error || 'Registration failed');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -65,17 +90,18 @@ const SignUpScreen = ({ navigation }) => {
 
             {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.title}>Create Account</Text>
+              <Text style={styles.title}>Create Your Account 🔐</Text>
               <Text style={styles.subtitle}>Join now and unlock 1000+ voice effects instantly</Text>
             </View>
 
             {/* Form Section */}
             <View style={styles.formSection}>
               <AuthInput
-                placeholder="Username"
-                value={username}
-                onChangeText={setUsername}
-                iconName="person-outline"
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                iconName="mail-outline"
+                keyboardType="email-address"
               />
 
               <AuthInput
@@ -88,8 +114,8 @@ const SignUpScreen = ({ navigation }) => {
 
               <AuthInput
                 placeholder="Confirm Password"
-                value={password}
-                onChangeText={setPassword}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
                 iconName="lock-closed-outline"
                 secureTextEntry
               />
@@ -98,8 +124,11 @@ const SignUpScreen = ({ navigation }) => {
                 style={styles.signUpButton}
                 onPress={handleSignUp}
                 activeOpacity={0.8}
+                disabled={loading}
               >
-                <Text style={styles.signUpButtonText}>Sign Up</Text>
+                <Text style={styles.signUpButtonText}>
+                  {loading ? 'Creating Account...' : 'Sign Up'}
+                </Text>
               </TouchableOpacity>
               <View style={styles.signInContainer}>
               <Text style={styles.signInText}>Already have an account? </Text>
@@ -107,6 +136,13 @@ const SignUpScreen = ({ navigation }) => {
                 <Text style={styles.signInLink}>Sign In</Text>
               </TouchableOpacity>
             </View>
+            
+            {/* Error Message */}
+            {error && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
             </View>
 
             {/* Sign In Link */}
@@ -197,6 +233,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     fontWeight: '600',
+  },
+  errorContainer: {
+    padding: 12,
+    marginTop: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 82, 82, 0.1)',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#FF5252',
+    fontSize: 14,
   },
 });
 
