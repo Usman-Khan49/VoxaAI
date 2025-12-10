@@ -13,7 +13,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
-import { COMPUTER_IP } from "../config/apiConfig";
+import { getApiBaseUrl } from "../config/apiConfig";
 import { colors } from "../styles/theme";
 
 const { width, height } = Dimensions.get("window");
@@ -44,12 +44,21 @@ const AudioPlayerScreen = ({ navigation, route }) => {
       if (audioFile?.uri) {
         let uri = audioFile.uri;
 
-        // Fix URLs for physical devices - replace localhost or emulator IPs with computer's actual IP
+        // Fix URLs for physical devices - replace localhost or emulator IPs with actual API base URL
         if (Platform.OS !== "web") {
-          if (uri.includes("localhost")) {
-            uri = uri.replace("localhost", COMPUTER_IP);
-          } else if (uri.includes("10.0.2.2")) {
-            uri = uri.replace("10.0.2.2", COMPUTER_IP);
+          const apiBaseUrl = getApiBaseUrl();
+
+          // Replace host and port completely
+          if (
+            uri.includes("localhost") ||
+            uri.includes("10.0.2.2") ||
+            uri.includes("10.218.198.149")
+          ) {
+            // Extract the path part (everything after the port)
+            const pathMatch = uri.match(/https?:\/\/[^\/]+(\/.+)/);
+            if (pathMatch) {
+              uri = `${apiBaseUrl}${pathMatch[1]}`;
+            }
           }
         }
 

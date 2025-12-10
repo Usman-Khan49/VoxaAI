@@ -19,7 +19,7 @@ import { colors } from "../styles/theme";
 import AuthInput from "../components/AuthInput";
 import { authService } from "../services/api";
 import axios from "axios";
-import { COMPUTER_IP } from "../config/apiConfig";
+import { getApiBaseUrl } from "../config/apiConfig";
 
 const { width, height } = Dimensions.get("window");
 
@@ -42,10 +42,9 @@ const CompleteProfileScreen = ({ navigation, route }) => {
         // First, test basic connectivity
         console.log("[Profile] Testing server connectivity...");
         try {
-          const healthCheck = await axios.get(
-            `http://${COMPUTER_IP}:3000/health`,
-            { timeout: 5000 }
-          );
+          const healthCheck = await axios.get(`${getApiBaseUrl()}/health`, {
+            timeout: 5000,
+          });
           console.log("[Profile] Server is reachable:", healthCheck.data);
         } catch (connError) {
           console.error(
@@ -54,7 +53,7 @@ const CompleteProfileScreen = ({ navigation, route }) => {
           );
           Alert.alert(
             "Connection Error",
-            `Cannot reach server at ${COMPUTER_IP}:3000\n\nMake sure:\n• Your phone and PC are on the same WiFi\n• Backend server is running\n• Windows Firewall allows Node.js`,
+            `Cannot reach server\n\nMake sure:\n• Backend server is running\n• Internet connection is stable`,
             [{ text: "OK" }]
           );
           setLoading(false);

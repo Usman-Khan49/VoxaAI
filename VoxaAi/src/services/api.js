@@ -1,26 +1,10 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
-import { COMPUTER_IP } from "../config/apiConfig";
+import { getApiBaseUrl } from "../config/apiConfig";
 
-// Default API URL based on platform
-const getApiUrl = () => {
-  if (Platform.OS === "web") {
-    return "http://localhost:3000/api";
-  }
-
-  // For both Android and iOS physical devices, use computer's IP
-  // Comment out the line below and uncomment the emulator lines if using emulator
-  return `http://${COMPUTER_IP}:3000/api`;
-
-  // Uncomment these lines if using Android Emulator or iOS Simulator:
-  // if (Platform.OS === "android") {
-  //   return "http://10.0.2.2:3000/api"; // Android emulator
-  // }
-  // return "http://localhost:3000/api"; // iOS simulator
-};
-
-const API_URL = getApiUrl();
+// Use centralized API configuration (supports both local and ngrok)
+const API_URL = `${getApiBaseUrl()}/api`;
 
 console.log(`[API] Using API URL: ${API_URL} (Platform: ${Platform.OS})`);
 
